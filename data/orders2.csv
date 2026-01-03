@@ -1,0 +1,16 @@
+order_id,client_id,product_id,product_name,quantity,unit_price,total_amount,order_date,status
+1001,C001,P001,Laptop,1,899.99,899.99,2025-01-05,Completed
+1002,C002,P005,Wireless Mouse,2,19.99,39.98,2025-01-06,Completed
+1003,C001,P010,USB-C Adapter,1,12.50,12.50,2025-01-08,Cancelled
+1004,C003,P015,Office Chair,1,149.99,149.99,2025-01-12,Completed
+1005,C004,P002,Smartphone,1,699.00,699.00,2025-01-15,Pending
+1006,C002,P022,Keyboard,1,29.99,29.99,2025-01-15,Completed
+1007,C005,P012,Monitor 27",2,199.99,399.98,2025-01-18,Completed
+1008,C006,P020,Webcam HD,1,49.99,49.99,2025-01-18,Completed
+1009,C003,P032,Desk Lamp,1,24.99,24.99,2025-01-19,Completed
+1010,C007,P009,Headphones,1,89.99,89.99,2025-01-20,Pending
+1011,C004,P003,Tablet,1,299.00,299.00,2025-01-21,Completed
+1012,C008,P018,Printer,1,129.99,129.99,2025-01-22,Completed
+1013,C009,P007,Paper Pack A4,5,4.50,22.50,2025-01-23,Completed
+1014,C010,P025,Ink Cartridge,2,22.99,45.98,2025-01-25,Completed
+1015,C002,P030,Laptop Stand,1,34.99,34.99,2025-01-26,Pending
