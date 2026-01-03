@@ -309,6 +309,103 @@ This transformation filters the stream to show only orders with a total value gr
 
 This final analytics case ranks products by the total quantity sold, providing insights into product popularity regardless of price. The awaitAnyTermination method keeps the application running and processing data until one of the streaming queries terminates.
 
+### Schema V2 Definition and Streaming Source
+
+The Schema V2 implementation follows a similar structure but with key differences to accommodate the different CSV format used by orders2.csv and orders3.csv.
+
+```java
+    private static void runSchemaV2Analytics(SparkSession spark) throws Exception {
+        System.out.println("Using Schema V2 (orders2/orders3.csv format)");
+        System.out.println("Reading from: hdfs://namenode:8020/data/orders2/");
+        
+        StructType schema = new StructType(new StructField[]{
+                new StructField("order_id", DataTypes.LongType, true, Metadata.empty()),
+                new StructField("client_id", DataTypes.StringType, true, Metadata.empty()),
+                new StructField("product_id", DataTypes.StringType, true, Metadata.empty()),
+                new StructField("product_name", DataTypes.StringType, true, Metadata.empty()),
+                new StructField("quantity", DataTypes.IntegerType, true, Metadata.empty()),
+                new StructField("unit_price", DataTypes.DoubleType, true, Metadata.empty()),
+                new StructField("total_amount", DataTypes.DoubleType, true, Metadata.empty()),
+                new StructField("order_date", DataTypes.StringType, true, Metadata.empty()),
+                new StructField("status", DataTypes.StringType, true, Metadata.empty())
+        });
+
+        Dataset<Row> ordersDF = spark.readStream()
+                .schema(schema)
+                .option("header", true)
+                .csv("hdfs://namenode:8020/data/orders2/");
+```
+
+The Schema V2 definition differs from V1 in three important ways. First, instead of having a client_name field, it includes a product_id field which serves as a unique identifier for each product in the inventory system. Second, the column name for price is unit_price, and the total is called total_amount, reflecting a more normalized data structure. Third, the data source directory is /data/orders2/ which will contain both orders2.csv and orders3.csv files.
+
+### Schema V2 Analytics Case 2: Total Sales Aggregation
+
+```java
+        Dataset<Row> totalSalesDF = ordersDF
+                .agg(
+                        sum("total_amount").alias("total_sales"),
+                        count("order_id").alias("total_orders"),
+                        avg("total_amount").alias("avg_order_value")
+                );
+```
+
+The aggregation uses total_amount instead of total to match the V2 column naming convention. The output columns remain the same to maintain consistency in the analytics output format.
+
+### Schema V2 Analytics Case 3: Sales by Product with Product ID
+
+```java
+        Dataset<Row> salesByProductDF = ordersDF
+                .groupBy("product_id", "product_name")
+                .agg(
+                        sum("total_amount").alias("product_sales"),
+                        sum("quantity").alias("total_quantity"),
+                        count("order_id").alias("order_count"),
+                        avg("unit_price").alias("avg_unit_price")
+                )
+                .orderBy(desc("product_sales"));
+```
+
+This is one of the most significant differences from V1. The groupBy operation now includes both product_id and product_name, allowing for proper tracking of products even if they have similar names. Additionally, a new metric avg_unit_price is calculated, which provides insights into the average selling price for each product.
+
+### Schema V2 Analytics Case 4: Sales by Client
+
+```java
+        Dataset<Row> salesByClientDF = ordersDF
+                .groupBy("client_id")
+                .agg(
+                        sum("total_amount").alias("total_spent"),
+                        count("order_id").alias("order_count"),
+                        avg("total_amount").alias("avg_order_value")
+                )
+                .orderBy(desc("total_spent"));
+```
+
+Unlike V1 which groups by both client_id and client_name, V2 only groups by client_id since the client name is not available in this schema. This demonstrates how the same analytics goal can be achieved with different data structures, though with less human-readable output.
+
+### Schema V2 Analytics Case 6: High-Value Orders Filter
+
+```java
+        Dataset<Row> highValueOrdersDF = ordersDF
+                .filter(col("total_amount").gt(100))
+                .select("order_id", "client_id", "product_name", "total_amount", "status");
+```
+
+The filter uses total_amount instead of total, and the selected columns include client_id instead of client_name since the latter is not available in V2 schema.
+
+### Schema V2 Analytics Case 7: Top Products by Quantity Sold
+
+```java
+        Dataset<Row> topProductsDF = ordersDF
+                .groupBy("product_id", "product_name")
+                .agg(sum("quantity").alias("total_quantity_sold"))
+                .orderBy(desc("total_quantity_sold"));
+
+        spark.streams().awaitAnyTermination();
+    }
+```
+
+This query groups by both product_id and product_name for proper product identification. This approach is more robust than V1 because products are uniquely identified by their ID, preventing potential issues with products that might have similar or identical names.
+
 ---
 
 ## Environment Setup and Execution
